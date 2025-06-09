@@ -1,0 +1,1 @@
+#error "rom pack should be created with makeroms.py script"
