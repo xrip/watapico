@@ -56,6 +56,11 @@ The firmware (`watapico.c`) is built using CMake.
 
 Contributions are welcome! If you have improvements or bug fixes, please feel free to fork the repository and submit a pull request.
 
+## Credits
+
+Hardware design: Sa Gin
+
+
 ## License
 
 (Please add a license file if you wish to specify one, e.g., MIT, GPL, etc.)
