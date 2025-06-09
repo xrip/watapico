@@ -1,12 +1,17 @@
 # RP2040-based Watara Supervision Flash Cartridge
 
+![image](https://github.com/user-attachments/assets/b708a552-b319-4aea-887f-9cbb1108649a)
+
+
 ## Overview
 
 This project implements a flash cartridge for the Watara Supervision handheld game console using a Raspberry Pi Pico (RP2040 microcontroller). It allows you to load and play Watara Supervision ROM files (`.sv` format) on the original hardware by emulating the original game cartridges.
 
 ## Hardware
 
-*   **Main Component:** Strictly **PURPLE** Raspberry Pi Pico with all GPIO's exposed
+Download [Gerber](https://github.com/xrip/watapico/raw/refs/heads/master/watara-cartridge-gerber.zip) or whole [KiCad project](https://github.com/xrip/watapico/raw/refs/heads/master/WatapicoCartrigeProject.zip).
+
+Use **strictly** purple chinese RP2040 clone, that expose all 30 GPIOs
 
 
 
@@ -52,6 +57,11 @@ The firmware (`watapico.c`) is built using CMake.
 ## Contributing
 
 Contributions are welcome! If you have improvements or bug fixes, please feel free to fork the repository and submit a pull request.
+
+## Credits
+
+Hardware design: Sa Gin
+
 
 ## License
 
