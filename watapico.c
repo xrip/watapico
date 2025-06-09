@@ -48,7 +48,7 @@ void main() {
     // Set the system clock speed.
     hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
     sleep_us(35);
-    set_sys_clock_hz(400 * MHZ, true);
+    set_sys_clock_hz(400 * MHZ, true); // 100x of Watara Supervision clock speed
 
     // Initialize all input pins at once
     gpio_init_mask(ADDR_MASK | DATA_MASK | READ_MASK | PWR_ON_MASK);
