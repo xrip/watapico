@@ -6,7 +6,9 @@ This project implements a flash cartridge for the Watara Supervision handheld ga
 
 ## Hardware
 
-*   **Main Component:** Strictly **PURPLE** Raspberry Pi Pico with all GPIO's exposed
+Download [Gerber](https://github.com/xrip/watapico/raw/refs/heads/master/watara-cartridge-gerber.zip) or whole [KiCad project](https://github.com/xrip/watapico/raw/refs/heads/master/WatapicoCartrigeProject.zip).
+
+Use **strictly** purple chinese RP2040 clone, that expose all 30 GPIOs
 
 ## Software/Firmware
 
