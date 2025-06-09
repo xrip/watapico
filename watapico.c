@@ -54,7 +54,7 @@ void main() {
     gpio_init_mask(ADDR_MASK | DATA_MASK | READ_MASK | PWR_ON_MASK);
     gpio_set_dir_in_masked(ADDR_MASK | DATA_MASK | READ_MASK);
 
-    const RomEntry *rom_entry = get_rom_by_index(43);
+    const RomEntry *rom_entry = get_rom_by_index(random_byte());
     memcpy(rom, rom_entry->data, rom_entry->size);
     ROM_MASK = rom_entry->mask;
 
