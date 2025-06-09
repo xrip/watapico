@@ -6,7 +6,7 @@ This project implements a flash cartridge for the Watara Supervision handheld ga
 
 ## Hardware
 
-*   **Main Component:** Raspberry Pi Pico (or any RP2040-based board)
+*   **Main Component:** Strictly **PURPLE** Raspberry Pi Pico with all GPIO's exposed
 
 ## Software/Firmware
 
