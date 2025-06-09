@@ -1,5 +1,8 @@
 # RP2040-based Watara Supervision Flash Cartridge
 
+![image](https://github.com/user-attachments/assets/b708a552-b319-4aea-887f-9cbb1108649a)
+
+
 ## Overview
 
 This project implements a flash cartridge for the Watara Supervision handheld game console using a Raspberry Pi Pico (RP2040 microcontroller). It allows you to load and play Watara Supervision ROM files (`.sv` format) on the original hardware by emulating the original game cartridges.
