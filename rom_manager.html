@@ -141,8 +141,9 @@
         const UF2_MAGIC_END = 0x0AB16F30;
         const RP2040_FAMILY_ID = 0xe48bff56;
 
-        const ROM_LIST_BASE = 0x10004000;
-        const ROM_DATA_BASE = 0x10008000;
+        const ROM_LIST_BASE = 0x10000000 + 16 * 1024;
+        const ROMS_TOTAL_BASE = 0x10000000 + 31 * 1024;
+        const ROM_DATA_BASE = 0x10000000 + 32 * 1024;
 
         let uf2Blocks = [];
         let roms = [];
@@ -311,6 +312,14 @@
                     data: romData.slice(i, i + UF2_DATA_SIZE)
                 });
             }
+
+            const romsCountData = new Uint8Array(4);
+            new DataView(romsCountData.buffer).setUint32(0, roms.length, true);
+
+            newUf2Blocks.push({
+                address: ROMS_TOTAL_BASE,
+                data: romsCountData
+            });
 
             const finalUf2 = new Uint8Array(newUf2Blocks.length * UF2_BLOCK_SIZE);
             const finalUf2View = new DataView(finalUf2.buffer);
