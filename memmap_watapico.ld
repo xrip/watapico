@@ -24,7 +24,8 @@
 MEMORY
 {
     FLASH(rx) : ORIGIN = 0x10000000, LENGTH = 16k
-    ROM_LIST(rx): ORIGIN = 0x10000000 + 16k, LENGTH = 16k
+    ROM_LIST(rx): ORIGIN = 0x10000000 + 16k, LENGTH = 15k
+    ROMS_TOTAL(rx): ORIGIN = 0x10000000 + 31k, LENGTH = 1k
     ROMS(rx) : ORIGIN = 0x10000000+32k, LENGTH = 16384k-32k
     RAM(rwx) : ORIGIN =  0x20000000, LENGTH = 262k
     SCRATCH_X(rwx) : ORIGIN = 0x20000000+262k, LENGTH = 1k
@@ -288,8 +289,14 @@ SECTIONS
             *(.watara_rom_list)
         } > ROM_LIST
 
+        .watara_roms_counter : {
+            *(.watara_roms_counter)
+        } > ROMS_TOTAL
+
         .watara_roms : {
             *(.watara_roms)
         } > ROMS
+
+
 }
 
