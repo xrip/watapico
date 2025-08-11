@@ -39,6 +39,7 @@ target_sources(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/watapico.c)
 
 target_link_libraries(${PROJECT_NAME}
         pico_runtime
+        hardware_flash
         -Wl,--wrap=atexit # size optimizations
 )
 target_link_options(${PROJECT_NAME} PRIVATE -Xlinker --print-memory-usage --data-sections --function-sections)

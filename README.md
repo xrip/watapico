@@ -36,7 +36,7 @@ The project has two main components:
 ### ROM format, selection, and limits
 
 - Supported input: Watara Supervision `.sv` files.
-- On boot, a random ROM is selected: `get_rom_by_index(random_byte())`.
+- On boot, the firmware selects the next ROM using a persistent index stored at the end of flash. The index is incremented and saved on each start, so each power cycle advances to the next ROM.
 - Address wrap: the generator computes a power-of-two mask so smaller ROMs mirror correctly over the address space.
 - Important: The firmware buffer is 64 KiB (`uint8_t rom[65536]`). Do not include ROMs larger than 64 KiB or they will not fit.
 

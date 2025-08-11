@@ -1,9 +1,13 @@
 #include <string.h>
+#include <stdint.h>
 
 #include <pico/time.h>
 
 #include <hardware/gpio.h>
 #include <hardware/clocks.h>
+#include <hardware/flash.h>
+#include <hardware/sync.h>
+#include <hardware/regs/addressmap.h>
 #include <hardware/structs/vreg_and_chip_reset.h>
 #include <hardware/structs/rosc.h>
 
@@ -24,6 +28,54 @@
 
 uint8_t __aligned(4) rom[65536];
 uint16_t ROM_MASK = 0xFFFF;
+
+// -----------------------------------------------------------------------------
+// Flash-backed ROM index storage (at end of external flash)
+// -----------------------------------------------------------------------------
+
+#ifndef PICO_FLASH_SIZE_BYTES
+#error PICO_FLASH_SIZE_BYTES must be defined by the build system
+#endif
+
+#define SETTINGS_SECTOR_SIZE   4096u
+#define SETTINGS_PAGE_SIZE      256u
+#define SETTINGS_MAGIC   0x57544150u /* "WTAP" */
+
+// Place settings in the last 4 KiB sector of flash
+#define SETTINGS_FLASH_OFFSET  (PICO_FLASH_SIZE_BYTES - SETTINGS_SECTOR_SIZE)
+#define SETTINGS_XIP_ADDR      (XIP_BASE + SETTINGS_FLASH_OFFSET)
+
+typedef struct {
+    uint32_t magic;
+    uint32_t rom_index;
+    uint8_t  reserved[SETTINGS_PAGE_SIZE - 8];
+} __attribute__((packed)) SettingsPage;
+
+static inline const SettingsPage *get_settings_xip_ptr() {
+    return (const SettingsPage *)(uintptr_t)SETTINGS_XIP_ADDR;
+}
+
+static uint32_t load_rom_index_from_flash() {
+    const SettingsPage *page = get_settings_xip_ptr();
+    if (page->magic == SETTINGS_MAGIC) {
+        return page->rom_index;
+    }
+    return 0u; // default on first boot or uninitialized flash
+}
+
+static void save_rom_index_to_flash(uint32_t rom_index) {
+    // Prepare a single 256-byte page payload
+    static uint8_t page_buffer[SETTINGS_PAGE_SIZE];
+    memset(page_buffer, 0xFF, sizeof(page_buffer));
+    ((uint32_t *)page_buffer)[0] = SETTINGS_MAGIC;
+    ((uint32_t *)page_buffer)[1] = rom_index;
+
+    const uint32_t ints = save_and_disable_interrupts();
+    // Erase the whole 4 KiB sector, then program the first 256-byte page
+    flash_range_erase(SETTINGS_FLASH_OFFSET, SETTINGS_SECTOR_SIZE);
+    flash_range_program(SETTINGS_FLASH_OFFSET, page_buffer, SETTINGS_PAGE_SIZE);
+    restore_interrupts(ints);
+}
 
 [[noreturn]] void __time_critical_func(handle_bus)() {
     while (true) {
@@ -54,9 +106,14 @@ void main() {
     gpio_init_mask(ADDR_MASK | DATA_MASK | READ_MASK | PWR_ON_MASK);
     gpio_set_dir_in_masked(ADDR_MASK | DATA_MASK | READ_MASK);
 
-    const RomEntry *rom_entry = get_rom_by_index(random_byte());
+    // Load persistent ROM index from the last flash sector
+    const uint32_t current_index = load_rom_index_from_flash();
+    const RomEntry *rom_entry = get_rom_by_index((int)current_index);
     memcpy(rom, rom_entry->data, rom_entry->size);
     ROM_MASK = rom_entry->mask;
+
+    // Increment and persist the ROM index for next boot
+    save_rom_index_to_flash(current_index + 1u);
 
     gpio_set_dir(PWR_ON_PIN, GPIO_OUT);
     gpio_put(PWR_ON_PIN, 1);
