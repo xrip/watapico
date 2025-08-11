@@ -6,6 +6,25 @@
 
 This project implements a flash cartridge for the Watara Supervision handheld game console using a Raspberry Pi Pico (RP2040). It lets you load and play Watara Supervision ROM files (`.sv`) on original hardware by serving ROM data from the RP2040 to the console bus.
 
+## Web-based ROM Manager
+
+Download the latest firmware: [Watapico Firmware](https://github.com/xrip/watapico/releases/latest/download/watapico.uf2)
+
+A web-based ROM manager is available to simplify the process of adding and removing ROMs from the firmware. You can access it here: [Watapico ROM Manager](https://xrip.github.io/watapico/) 
+
+
+### How to use the ROM Manager
+
+1.  **Open the [Watapico ROM Manager](https://xrip.github.io/watapico/)** in your web browser.
+2.  **Load your `watapico.uf2` firmware file** by dragging and dropping it into the designated area or by clicking to select it.
+3.  **Manage your ROMs:**
+    *   The current ROMs will be displayed in a list.
+    *   You can delete ROMs by clicking the "Delete" button next to them.
+    *   You can add new `.sv` ROMs by dragging and dropping them into the ROMs area.
+4.  **Save your changes:**
+    *   Click the "Save Updated UF2 File" button to generate and download a new `watapico_updated.uf2` file with your changes.
+
+
 ## Hardware
 
 - Download the manufacturing files: [Gerbers](https://github.com/xrip/watapico/raw/refs/heads/master/watara-cartridge-gerber.zip) or the full [KiCad project](https://github.com/xrip/watapico/raw/refs/heads/master/WatapicoCartrigeProject.zip).
@@ -49,6 +68,10 @@ The project has two main components:
   - `roms/roms.h`: Generated. Do not edit manually.
 
 ## Usage
+
+The recommended way to manage ROMs is to use the [web-based ROM manager](#web-based-rom-manager).
+
+However, if you prefer to use the command-line tools, you can follow these steps:
 
 ### 1) Add ROMs and generate header
 
