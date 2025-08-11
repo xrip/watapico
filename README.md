@@ -15,7 +15,7 @@ A web-based ROM manager is available to simplify the process of adding and remov
 
 ### How to use the ROM Manager
 
-1.  **Open the [Watapico ROM Manager](https://xrip.github.io/watapico/)** in your web browser.
+1.  **Open the [Watapico ROM Manager](https://xrip.github.io/watapico/rom_manager.html)** in your web browser.
 2.  **Load your `watapico.uf2` firmware file** by dragging and dropping it into the designated area or by clicking to select it.
 3.  **Manage your ROMs:**
     *   The current ROMs will be displayed in a list.
