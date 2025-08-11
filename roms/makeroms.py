@@ -43,7 +43,7 @@ def sanitize_name(filename):
 def generate_rom_data_array(rom_data, var_name):
     """Generate C array declaration for ROM data"""
     lines = []
-    lines.append(f"static const unsigned char {var_name}[] = {{")
+    lines.append(f"static const unsigned char __attribute__((section(\".watara_roms\"))) {var_name}[] = {{")
     
     # Format data in rows of 16 bytes
     for i in range(0, len(rom_data), 16):
@@ -140,7 +140,7 @@ def generate_header_file(roms, output_file):
     
     # Generate ROM entries array
     lines.append("// ROM entries table")
-    lines.append("static const RomEntry rom_entries[] = {")
+    lines.append("static const RomEntry __attribute__((section(\".watara_rom_list\"))) rom_entries[] = {")
     
     for i, rom in enumerate(roms):
         # Remove .sv extension from display name

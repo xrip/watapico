@@ -57,7 +57,7 @@ static inline const SettingsPage *get_settings_xip_ptr() {
 
 static uint32_t load_rom_index_from_flash() {
     const SettingsPage *page = get_settings_xip_ptr();
-    if (page->magic == SETTINGS_MAGIC) {
+    if (page->magic == SETTINGS_MAGIC && page->rom_index < ROM_COUNT) {
         return page->rom_index;
     }
     return 0u; // default on first boot or uninitialized flash

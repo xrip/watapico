@@ -42,4 +42,8 @@ target_link_libraries(${PROJECT_NAME}
         hardware_flash
         -Wl,--wrap=atexit # size optimizations
 )
+
+# use custom linker script
+pico_set_linker_script(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/memmap_watapico.ld)
+
 target_link_options(${PROJECT_NAME} PRIVATE -Xlinker --print-memory-usage --data-sections --function-sections)
