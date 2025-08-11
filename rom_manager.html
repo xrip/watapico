@@ -1,0 +1,348 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watapico ROM Manager</title>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --secondary-color: #f5f5f5;
+            --text-color: #333;
+            --border-color: #ddd;
+            --error-color: #e74c3c;
+            --success-color: #2ecc71;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        h1 {
+            margin: 0;
+        }
+        main {
+            padding: 2rem;
+        }
+        .section {
+            margin-bottom: 2rem;
+        }
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 0.5rem;
+        }
+        .file-upload-area, .rom-drop-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .file-upload-area:hover, .rom-drop-area:hover {
+            background-color: #f9f9f9;
+        }
+        #rom-list {
+            list-style: none;
+            padding: 0;
+        }
+        .rom-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .rom-item:last-child {
+            border-bottom: none;
+        }
+        .rom-name {
+            font-weight: 500;
+        }
+        .delete-rom-btn {
+            background-color: var(--error-color);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #save-btn {
+            background-color: var(--success-color);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            width: 100%;
+            margin-top: 1rem;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Watapico ROM Manager</h1>
+        </header>
+        <main>
+            <section class="section">
+                <h2 class="section-title">1. Load Firmware</h2>
+                <div class="file-upload-area" id="uf2-drop-area">
+                    <p>Drag & drop your `watapico.uf2` file here, or click to select.</p>
+                    <input type="file" id="uf2-input" class="hidden" accept=".uf2">
+                </div>
+                <p id="uf2-file-info"></p>
+            </section>
+
+            <section class="section hidden" id="rom-management-section">
+                <h2 class="section-title">2. Manage ROMs</h2>
+                <ul id="rom-list"></ul>
+                <div class="rom-drop-area" id="rom-drop-area">
+                    <p>Drag & drop `.sv` ROM files here to add them.</p>
+                     <input type="file" id="rom-input" class="hidden" accept=".sv" multiple>
+                </div>
+            </section>
+
+            <section class="section hidden" id="save-section">
+                <h2 class="section-title">3. Save Firmware</h2>
+                <button id="save-btn">Save Updated UF2 File</button>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const UF2_BLOCK_SIZE = 512;
+        const UF2_DATA_SIZE = 256;
+        const UF2_MAGIC_START0 = 0x0A324655;
+        const UF2_MAGIC_START1 = 0x9E5D5157;
+        const UF2_MAGIC_END = 0x0AB16F30;
+        const RP2040_FAMILY_ID = 0xe48bff56;
+
+        const ROM_LIST_BASE = 0x10004000;
+        const ROM_DATA_BASE = 0x10008000;
+
+        let uf2Blocks = [];
+        let roms = [];
+
+        const uf2DropArea = document.getElementById('uf2-drop-area');
+        const uf2Input = document.getElementById('uf2-input');
+        const uf2FileInfo = document.getElementById('uf2-file-info');
+        const romManagementSection = document.getElementById('rom-management-section');
+        const romList = document.getElementById('rom-list');
+        const romDropArea = document.getElementById('rom-drop-area');
+        const romInput = document.getElementById('rom-input');
+        const saveSection = document.getElementById('save-section');
+        const saveBtn = document.getElementById('save-btn');
+
+        uf2DropArea.addEventListener('click', () => uf2Input.click());
+        uf2Input.addEventListener('change', (e) => handleUF2File(e.target.files[0]));
+        uf2DropArea.addEventListener('dragover', (e) => e.preventDefault());
+        uf2DropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            handleUF2File(e.dataTransfer.files[0]);
+        });
+
+        romDropArea.addEventListener('click', () => romInput.click());
+        romInput.addEventListener('change', (e) => handleRomFiles(e.target.files));
+        romDropArea.addEventListener('dragover', (e) => e.preventDefault());
+        romDropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            handleRomFiles(e.dataTransfer.files);
+        });
+
+        saveBtn.addEventListener('click', generateAndSaveUF2);
+
+        function handleUF2File(file) {
+            if (!file || !file.name.endsWith('.uf2')) {
+                alert('Please select a valid .uf2 file.');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    parseUF2(e.target.result);
+                    uf2FileInfo.textContent = `Loaded: ${file.name}`;
+                    romManagementSection.classList.remove('hidden');
+                    saveSection.classList.remove('hidden');
+                    renderRomList();
+                } catch (error) {
+                    alert(`Error parsing UF2 file: ${error.message}`);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function handleRomFiles(files) {
+            for (const file of files) {
+                if (!file.name.endsWith('.sv')) {
+                    alert(`Invalid file: ${file.name}. Only .sv files are supported.`);
+                    continue;
+                }
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const romData = new Uint8Array(e.target.result);
+                    const romName = file.name.replace(/\.sv$/i, '');
+                    roms.push({ name: romName, data: romData });
+                    renderRomList();
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        function parseUF2(buffer) {
+            uf2Blocks = [];
+            roms = [];
+            const dataView = new DataView(buffer);
+            for (let i = 0; i < buffer.byteLength; i += UF2_BLOCK_SIZE) {
+                const block = buffer.slice(i, i + UF2_BLOCK_SIZE);
+                const magic0 = dataView.getUint32(i, true);
+                const magic1 = dataView.getUint32(i + 4, true);
+                const magicEnd = dataView.getUint32(i + UF2_BLOCK_SIZE - 4, true);
+
+                if (magic0 !== UF2_MAGIC_START0 || magic1 !== UF2_MAGIC_START1 || magicEnd !== UF2_MAGIC_END) {
+                    throw new Error(`Invalid UF2 block at offset ${i}`);
+                }
+                uf2Blocks.push({
+                    address: dataView.getUint32(i + 12, true),
+                    data: new Uint8Array(block.slice(32, 32 + UF2_DATA_SIZE))
+                });
+            }
+            extractRoms();
+        }
+
+        function extractRoms() {
+            const romListData = new Uint8Array(16 * 1024);
+            const romData = new Uint8Array(16 * 1024 * 1024 - 32 * 1024);
+
+            for (const block of uf2Blocks) {
+                if (block.address >= ROM_LIST_BASE && block.address < ROM_DATA_BASE) {
+                    romListData.set(block.data, block.address - ROM_LIST_BASE);
+                } else if (block.address >= ROM_DATA_BASE) {
+                    romData.set(block.data, block.address - ROM_DATA_BASE);
+                }
+            }
+
+            const romListView = new DataView(romListData.buffer);
+            for (let i = 0; i < romListData.byteLength; i += 56) {
+                const size = romListView.getUint32(i + 44, true);
+                if (size === 0 || size === 0xFFFFFFFF) break;
+
+                const nameBytes = romListData.slice(i + 4, i + 44);
+                const name = new TextDecoder().decode(nameBytes).split('\0')[0];
+                const dataPtr = romListView.getUint32(i + 52, true);
+                const dataOffset = dataPtr - ROM_DATA_BASE;
+                const data = romData.slice(dataOffset, dataOffset + size);
+                roms.push({ name, data });
+            }
+        }
+
+        function renderRomList() {
+            romList.innerHTML = '';
+            roms.forEach((rom, index) => {
+                const li = document.createElement('li');
+                li.className = 'rom-item';
+                li.innerHTML = `
+                    <span class="rom-name">${rom.name}</span>
+                    <button class="delete-rom-btn" data-index="${index}">Delete</button>
+                `;
+                romList.appendChild(li);
+            });
+
+            document.querySelectorAll('.delete-rom-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    roms.splice(e.target.dataset.index, 1);
+                    renderRomList();
+                });
+            });
+        }
+
+        function generateAndSaveUF2() {
+            const newUf2Blocks = uf2Blocks.filter(b => b.address < ROM_LIST_BASE);
+            let romDataOffset = 0;
+            const romListData = new ArrayBuffer(16 * 1024);
+            const romListView = new DataView(romListData);
+            const romData = new Uint8Array(16 * 1024 * 1024 - 32 * 1024);
+
+            roms.forEach((rom, i) => {
+                const entryOffset = i * 56;
+                const nameBytes = new TextEncoder().encode(rom.name);
+                new Uint8Array(romListData, entryOffset + 4, 40).set(nameBytes);
+                romListView.setUint32(entryOffset + 44, rom.data.length, true);
+                romListView.setUint32(entryOffset + 48, powerOfTwoMask(rom.data.length), true);
+                romListView.setUint32(entryOffset + 52, ROM_DATA_BASE + romDataOffset, true);
+
+                romData.set(rom.data, romDataOffset);
+                romDataOffset += rom.data.length;
+                romDataOffset = (romDataOffset + 3) & ~3; // 4-byte alignment
+            });
+
+            for (let i = 0; i < romListData.byteLength; i += UF2_DATA_SIZE) {
+                newUf2Blocks.push({
+                    address: ROM_LIST_BASE + i,
+                    data: new Uint8Array(romListData, i, UF2_DATA_SIZE)
+                });
+            }
+            for (let i = 0; i < romDataOffset; i += UF2_DATA_SIZE) {
+                newUf2Blocks.push({
+                    address: ROM_DATA_BASE + i,
+                    data: romData.slice(i, i + UF2_DATA_SIZE)
+                });
+            }
+
+            const finalUf2 = new Uint8Array(newUf2Blocks.length * UF2_BLOCK_SIZE);
+            const finalUf2View = new DataView(finalUf2.buffer);
+
+            newUf2Blocks.forEach((block, i) => {
+                const offset = i * UF2_BLOCK_SIZE;
+                finalUf2View.setUint32(offset, UF2_MAGIC_START0, true);
+                finalUf2View.setUint32(offset + 4, UF2_MAGIC_START1, true);
+                finalUf2View.setUint32(offset + 8, 0x2000, true); // Flags
+                finalUf2View.setUint32(offset + 12, block.address, true);
+                finalUf2View.setUint32(offset + 16, UF2_DATA_SIZE, true);
+                finalUf2View.setUint32(offset + 20, i, true);
+                finalUf2View.setUint32(offset + 24, newUf2Blocks.length, true);
+                finalUf2View.setUint32(offset + 28, RP2040_FAMILY_ID, true);
+                finalUf2.set(block.data, offset + 32);
+                finalUf2View.setUint32(offset + UF2_BLOCK_SIZE - 4, UF2_MAGIC_END, true);
+            });
+
+            const blob = new Blob([finalUf2], { type: 'application/octet-stream' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'watapico_updated.uf2';
+            link.click();
+        }
+
+        function powerOfTwoMask(size) {
+            let power = 1;
+            while (power < size) {
+                power <<= 1;
+            }
+            return power - 1;
+        }
+    </script>
+</body>
+</html>
