@@ -88,13 +88,6 @@ static void save_rom_index_to_flash(uint32_t rom_index) {
     }
 }
 
-inline static uint8_t random_byte() {
-    uint32_t random = 0;
-    for (int k = 0; k < 8; k++) {
-        random = random << 1 | rosc_hw->randombit;
-    }
-    return (uint8_t) random;
-}
 
 void main() {
     // Set the system clock speed.
