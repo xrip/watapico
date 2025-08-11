@@ -154,7 +154,7 @@ def generate_header_file(roms, output_file):
     lines.extend([
         "};",
         "",
-        f"#define ROM_COUNT {len(roms)}",
+        f"volatile uint16_t __attribute__((section(\".watara_roms_counter\"))) ROM_COUNT={len(roms)};",
         "",
         "// Helper functions",
         "static inline const RomEntry* get_rom_by_index(int index) {",
