@@ -10,7 +10,7 @@ This project implements a flash cartridge for the Watara Supervision handheld ga
 
 Download the latest firmware: [Watapico Firmware](https://github.com/xrip/watapico/releases/latest/download/watapico.uf2)
 
-A web-based ROM manager is available to simplify the process of adding and removing ROMs from the firmware. You can access it here: [Watapico ROM Manager](https://xrip.github.io/watapico/) 
+A web-based ROM manager is available to simplify the process of adding and removing ROMs from the firmware. You can access it here: [Watapico ROM Manager](https://xrip.github.io/watapico/rom_manager.html) 
 
 
 ### How to use the ROM Manager
