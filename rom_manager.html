@@ -40,6 +40,7 @@
         }
         main {
             padding: 2rem;
+            padding-bottom: 8rem; /* space for fixed save bar */
         }
         .section {
             margin-bottom: 2rem;
@@ -100,6 +101,20 @@
         .hidden {
             display: none;
         }
+        /* Fixed save bar */
+        #save-section {
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 0;
+            width: calc(100% - 4rem); /* account for body padding (2rem each side) */
+            max-width: 800px; /* match container max-width */
+            background: white;
+            padding-top: 0.5rem;
+            padding-bottom: 1rem;
+            box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.06);
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
@@ -108,8 +123,8 @@
             <h1>Watapico ROM Manager</h1>
         </header>
         <main>
-            <section class="section">
-                <h2 class="section-title">1. Load Firmware</h2>
+            <section class="section" id="firmware-load-section">
+                <h2 class="section-title">Load Firmware</h2>
                 <div class="file-upload-area" id="uf2-drop-area">
                     <p>Drag & drop your `watapico.uf2` file here, or click to select.</p>
                     <input type="file" id="uf2-input" class="hidden" accept=".uf2">
@@ -118,7 +133,7 @@
             </section>
 
             <section class="section hidden" id="rom-management-section">
-                <h2 class="section-title">2. Manage ROMs</h2>
+                <h2 class="section-title">Manage ROMs</h2>
                 <ul id="rom-list"></ul>
                 <div class="rom-drop-area" id="rom-drop-area">
                     <p>Drag & drop `.sv` ROM files here to add them.</p>
@@ -127,7 +142,7 @@
             </section>
 
             <section class="section hidden" id="save-section">
-                <h2 class="section-title">3. Save Firmware</h2>
+                <h2 class="section-title">Save Firmware</h2>
                 <button id="save-btn">Save Updated UF2 File</button>
             </section>
         </main>
@@ -151,12 +166,17 @@
         const uf2DropArea = document.getElementById('uf2-drop-area');
         const uf2Input = document.getElementById('uf2-input');
         const uf2FileInfo = document.getElementById('uf2-file-info');
+        const firmwareLoadSection = document.getElementById('firmware-load-section');
         const romManagementSection = document.getElementById('rom-management-section');
         const romList = document.getElementById('rom-list');
         const romDropArea = document.getElementById('rom-drop-area');
         const romInput = document.getElementById('rom-input');
         const saveSection = document.getElementById('save-section');
         const saveBtn = document.getElementById('save-btn');
+
+        // Ensure sections are hidden before UF2 is loaded
+        romManagementSection.classList.add('hidden');
+        saveSection.classList.add('hidden');
 
         uf2DropArea.addEventListener('click', () => uf2Input.click());
         uf2Input.addEventListener('change', (e) => handleUF2File(e.target.files[0]));
@@ -186,6 +206,7 @@
                 try {
                     parseUF2(e.target.result);
                     uf2FileInfo.textContent = `Loaded: ${file.name}`;
+                    firmwareLoadSection.classList.add('hidden');
                     romManagementSection.classList.remove('hidden');
                     saveSection.classList.remove('hidden');
                     renderRomList();
