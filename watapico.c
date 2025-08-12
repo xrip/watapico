@@ -116,10 +116,11 @@ void main() {
     current_rom = load_rom_index_from_flash();
     const RomEntry *rom_entry = get_rom_by_index((int)current_rom);
     memcpy(rom, rom_entry->data, rom_entry->size);
-
     if (MENU_ROM == current_rom) {
-        memcpy(&rom[0x1100], &rom_entries, sizeof(RomEntry) * ROM_COUNT);
+        rom[0x1100] = ROM_COUNT;
+        memcpy(&rom[0x1101], (uint8_t *) &rom_entries, sizeof(RomEntry) * ROM_COUNT);
     }
+
     ROM_MASK = rom_entry->mask;
 
     // Increment and persist the ROM index for next boot
