@@ -29,6 +29,8 @@
 uint8_t __aligned(4) rom[65536];
 uint16_t ROM_MASK = 0xFFFF;
 
+#define MENU_ROM 0
+
 // -----------------------------------------------------------------------------
 // Flash-backed ROM index storage (at end of external flash)
 // -----------------------------------------------------------------------------
@@ -76,11 +78,22 @@ static void save_rom_index_to_flash(uint32_t rom_index) {
     flash_range_program(SETTINGS_FLASH_OFFSET, page_buffer, SETTINGS_PAGE_SIZE);
     restore_interrupts(ints);
 }
+uint32_t current_rom;
 
 [[noreturn]] void __time_critical_func(handle_bus)() {
+    uint8_t cntr = 0;
+    uint32_t address;
     while (true) {
         while (gpio_get_all() & READ_MASK);
-        const uint32_t data = rom[gpio_get_all() & ROM_MASK] << 17 | PWR_ON_MASK;
+
+        address = gpio_get_all() & ROM_MASK;
+        const uint32_t data = rom[address] << 17 | PWR_ON_MASK;
+
+        if (MENU_ROM == current_rom && address >= 0x1000 & address <= 0x10FF) {
+            current_rom = address - 0x1000;
+            save_rom_index_to_flash(current_rom);
+            return;
+        }
 
         gpio_set_dir_out_masked(DATA_MASK);
         gpio_put_all(data);
@@ -100,13 +113,17 @@ void main() {
     gpio_set_dir_in_masked(ADDR_MASK | DATA_MASK | READ_MASK);
 
     // Load persistent ROM index from the last flash sector
-    const uint32_t current_index = load_rom_index_from_flash();
-    const RomEntry *rom_entry = get_rom_by_index((int)current_index);
+    current_rom = load_rom_index_from_flash();
+    const RomEntry *rom_entry = get_rom_by_index((int)current_rom);
     memcpy(rom, rom_entry->data, rom_entry->size);
+
+    if (MENU_ROM == current_rom) {
+        memcpy(&rom[0x1100], &rom_entries, sizeof(RomEntry) * ROM_COUNT);
+    }
     ROM_MASK = rom_entry->mask;
 
     // Increment and persist the ROM index for next boot
-    save_rom_index_to_flash(current_index + 1u);
+    save_rom_index_to_flash(0);
 
     gpio_set_dir(PWR_ON_PIN, GPIO_OUT);
     gpio_put(PWR_ON_PIN, 1);
