@@ -89,12 +89,11 @@ uint32_t current_rom;
         address = gpio_get_all() & ROM_MASK;
         const uint32_t data = rom[address] << 17 | PWR_ON_MASK;
 
-        if (__builtin_expect(MENU_ROM == current_rom && address >= 0x1000 & address <= 0x10FF, 0)) {
+        if (__builtin_expect(MENU_ROM == current_rom && address >= 0x1000 && address <= 0x10FF, 0)) {
             current_rom = address - 0x1000;
             save_rom_index_to_flash(current_rom);
             const RomEntry *rom_entry = get_rom_by_index((int)current_rom);
             memcpy(rom, rom_entry->data, rom_entry->size);
-            handle_bus();
         }
 
         gpio_set_dir_out_masked(DATA_MASK);

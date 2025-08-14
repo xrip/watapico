@@ -38,7 +38,7 @@
                 <section id="rom-management-section">
                     <h2 class="text-xl font-bold mb-4" x-text="`Manage ROMs (${roms.length} total)`"></h2>
                     <ul class="bg-white rounded-lg shadow">
-                        <template x-for="(rom, index) in roms" :key="rom.id">
+                        <template x-for="(rom, index) in roms" :key="rom.name">
                             <li :draggable="true"
                                 @dragstart="draggedIndex = index"
                                 @dragover.prevent
@@ -154,7 +154,7 @@
                         this.readFileAsArrayBuffer(file).then(buffer => {
                             const romData = new Uint8Array(buffer);
                             const romName = file.name.replace(/\.sv$/i, '');
-                            resolve({ id: self.crypto.randomUUID(), name: romName, data: romData });
+                            resolve({ name: romName, data: romData });
                         }).catch(reject);
                     });
                 },
@@ -217,7 +217,7 @@
                         const dataPtr = romListView.getUint32(i + 52, true);
                         const dataOffset = dataPtr - ROM_DATA_BASE;
                         const data = romData.slice(dataOffset, dataOffset + size);
-                        this.roms.push({ id: self.crypto.randomUUID(), name, data });
+                        this.roms.push({ name, data });
                     }
                 },
 
