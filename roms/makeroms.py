@@ -43,7 +43,7 @@ def sanitize_name(filename):
 def generate_rom_data_array(rom_data, var_name):
     """Generate C array declaration for ROM data"""
     lines = []
-    lines.append(f"static const unsigned char __attribute__((section(\".watara_roms\"))) {var_name}[] = {{")
+    lines.append(f"static const __aligned(4) unsigned char __attribute__((section(\".watara_roms\")))  {var_name}[] = {{")
     
     # Format data in rows of 16 bytes
     for i in range(0, len(rom_data), 16):

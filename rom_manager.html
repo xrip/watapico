@@ -310,7 +310,7 @@
 
             roms.forEach((rom, i) => {
                 const entryOffset = i * 56;
-                const nameBytes = new TextEncoder().encode(rom.name);
+                const nameBytes = new TextEncoder().encode(rom.name.substring(0, 40));
                 new Uint8Array(romListData, entryOffset + 4, 40).set(nameBytes);
                 romListView.setUint32(entryOffset + 44, rom.data.length, true);
                 romListView.setUint32(entryOffset + 48, powerOfTwoMask(rom.data.length), true);
