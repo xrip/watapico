@@ -92,7 +92,9 @@ uint32_t current_rom;
         if (MENU_ROM == current_rom && address >= 0x1000 & address <= 0x10FF) {
             current_rom = address - 0x1000;
             save_rom_index_to_flash(current_rom);
-            return;
+            const RomEntry *rom_entry = get_rom_by_index((int)current_rom);
+            memcpy(rom, rom_entry->data, rom_entry->size);
+            handle_bus();
         }
 
         gpio_set_dir_out_masked(DATA_MASK);
