@@ -75,43 +75,36 @@
                 draggedIndex: null,
                 dropIndex: null,
 
+                // Drag and drop reordering for ROMs
                 reorderRoms() {
                     const [draggedRom] = this.roms.splice(this.draggedIndex, 1);
                     this.roms.splice(this.dropIndex, 0, draggedRom);
                     this.draggedIndex = null;
                     this.dropIndex = null;
                 },
-                
+
+                // --- File Handling ---
                 handleUF2File(event) {
-                    const file = event.target.files[0];
-                    if (!file || !file.name.endsWith('.uf2')) {
-                        alert('Please select a valid .uf2 file.');
-                        return;
-                    }
-                    this.loadUf2(file);
+                    this.loadUf2(event.target.files[0]);
                 },
 
                 handleUF2Drop(event) {
-                    const file = event.dataTransfer.files[0];
+                    this.loadUf2(event.dataTransfer.files[0]);
+                },
+
+                async loadUf2(file) {
                     if (!file || !file.name.endsWith('.uf2')) {
                         alert('Please select a valid .uf2 file.');
                         return;
                     }
-                    this.loadUf2(file);
-                },
-
-                loadUf2(file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        try {
-                            this.parseUF2(e.target.result);
-                            this.uf2FileInfo = `Loaded: ${file.name}`;
-                            this.uf2Loaded = true;
-                        } catch (error) {
-                            alert(`Error parsing UF2 file: ${error.message}`);
-                        }
-                    };
-                    reader.readAsArrayBuffer(file);
+                    try {
+                        const buffer = await this.readFileAsArrayBuffer(file);
+                        this.parseUF2(buffer);
+                        this.uf2FileInfo = `Loaded: ${file.name}`;
+                        this.uf2Loaded = true;
+                    } catch (error) {
+                        alert(`Error parsing UF2 file: ${error.message}`);
+                    }
                 },
 
                 handleRomFiles(event) {
@@ -123,41 +116,52 @@
                 },
 
                 addRoms(files) {
-                    if (files.length === 1) {
-                        const file = files[0];
-                        if (!file.name.endsWith('.sv')) {
-                            alert(`Invalid file: ${file.name}. Only .sv files are supported.`);
-                            return;
-                        }
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                            const romData = new Uint8Array(e.target.result);
-                            const romName = file.name.replace(/\.sv$/i, '');
-                            this.roms.unshift({ id: self.crypto.randomUUID(), name: romName, data: romData });
-                        };
-                        reader.readAsArrayBuffer(file);
-                    } else {
-                        for (const file of files) {
+                    const romPromises = Array.from(files)
+                        .filter(file => {
                             if (!file.name.endsWith('.sv')) {
                                 alert(`Invalid file: ${file.name}. Only .sv files are supported.`);
-                                continue;
+                                return false;
                             }
-                            const reader = new FileReader();
-                            reader.onload = (e) => {
-                                const romData = new Uint8Array(e.target.result);
-                                const romName = file.name.replace(/\.sv$/i, '');
-                                this.roms.push({ id: self.crypto.randomUUID(), name: romName, data: romData });
-                            };
-                            reader.readAsArrayBuffer(file);
+                            return true;
+                        })
+                        .map(file => this.readRomFile(file));
+
+                    Promise.all(romPromises).then(newRoms => {
+                        if (files.length === 1) {
+                            this.roms.unshift(...newRoms);
+                        } else {
+                            this.roms.push(...newRoms);
                         }
-                    }
+                    });
                 },
 
                 deleteRom(index) {
                     this.roms.splice(index, 1);
                 },
 
+                // --- Helper Functions ---
+                readFileAsArrayBuffer(file) {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve(e.target.result);
+                        reader.onerror = reject;
+                        reader.readAsArrayBuffer(file);
+                    });
+                },
+
+                readRomFile(file) {
+                    return new Promise((resolve, reject) => {
+                        this.readFileAsArrayBuffer(file).then(buffer => {
+                            const romData = new Uint8Array(buffer);
+                            const romName = file.name.replace(/\.sv$/i, '');
+                            resolve({ id: self.crypto.randomUUID(), name: romName, data: romData });
+                        }).catch(reject);
+                    });
+                },
+
+                // --- UF2 Parsing and Generation ---
                 parseUF2(buffer) {
+                    // UF2 file format constants
                     const UF2_BLOCK_SIZE = 512;
                     const UF2_MAGIC_START0 = 0x0A324655;
                     const UF2_MAGIC_START1 = 0x9E5D5157;
@@ -166,6 +170,7 @@
                     this.uf2Blocks = [];
                     this.roms = [];
                     const dataView = new DataView(buffer);
+
                     for (let i = 0; i < buffer.byteLength; i += UF2_BLOCK_SIZE) {
                         const block = buffer.slice(i, i + UF2_BLOCK_SIZE);
                         const magic0 = dataView.getUint32(i, true);
@@ -175,6 +180,7 @@
                         if (magic0 !== UF2_MAGIC_START0 || magic1 !== UF2_MAGIC_START1 || magicEnd !== UF2_MAGIC_END) {
                             throw new Error(`Invalid UF2 block at offset ${i}`);
                         }
+
                         this.uf2Blocks.push({
                             address: dataView.getUint32(i + 12, true),
                             data: new Uint8Array(block.slice(32, 32 + 256))
@@ -184,11 +190,14 @@
                 },
 
                 extractRoms() {
+                    // Memory layout constants
                     const ROM_LIST_BASE = 0x10000000 + 16 * 1024;
                     const ROM_DATA_BASE = 0x10000000 + 32 * 1024;
+
                     const romListData = new Uint8Array(16 * 1024);
                     const romData = new Uint8Array(16 * 1024 * 1024 - 32 * 1024);
 
+                    // Extract ROM data from UF2 blocks
                     for (const block of this.uf2Blocks) {
                         if (block.address >= ROM_LIST_BASE && block.address < ROM_DATA_BASE) {
                             romListData.set(block.data, block.address - ROM_LIST_BASE);
@@ -197,6 +206,7 @@
                         }
                     }
 
+                    // Parse the ROM list
                     const romListView = new DataView(romListData.buffer);
                     for (let i = 0; i < romListData.byteLength; i += 56) {
                         const size = romListView.getUint32(i + 44, true);
@@ -228,6 +238,7 @@
                     const romListView = new DataView(romListData);
                     const romData = new Uint8Array(16 * 1024 * 1024 - 32 * 1024);
 
+                    // Create new ROM list and data
                     this.roms.forEach((rom, i) => {
                         const entryOffset = i * 56;
                         const nameBytes = new TextEncoder().encode(rom.name.substring(0, 40));
@@ -241,6 +252,7 @@
                         romDataOffset = (romDataOffset + 3) & ~3; // 4-byte alignment
                     });
 
+                    // Create new UF2 blocks for ROM list and data
                     for (let i = 0; i < romListData.byteLength; i += UF2_DATA_SIZE) {
                         newUf2Blocks.push({
                             address: ROM_LIST_BASE + i,
@@ -254,14 +266,15 @@
                         });
                     }
 
+                    // Create block for total ROMs count
                     const romsCountData = new Uint8Array(4);
                     new DataView(romsCountData.buffer).setUint32(0, this.roms.length, true);
-
                     newUf2Blocks.push({
                         address: ROMS_TOTAL_BASE,
                         data: romsCountData
                     });
 
+                    // Generate final UF2 file
                     const finalUf2 = new Uint8Array(newUf2Blocks.length * UF2_BLOCK_SIZE);
                     const finalUf2View = new DataView(finalUf2.buffer);
 
@@ -279,6 +292,7 @@
                         finalUf2View.setUint32(offset + UF2_BLOCK_SIZE - 4, UF2_MAGIC_END, true);
                     });
 
+                    // Trigger download
                     const blob = new Blob([finalUf2], { type: 'application/octet-stream' });
                     const link = document.createElement('a');
                     link.href = URL.createObjectURL(blob);
