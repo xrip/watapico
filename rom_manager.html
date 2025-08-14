@@ -133,7 +133,7 @@
             </section>
 
             <section class="section hidden" id="rom-management-section">
-                <h2 class="section-title">Manage ROMs</h2>
+                <h2 class="section-title" id="roms-section-title">Manage ROMs</h2>
                 <ul id="rom-list"></ul>
                 <div class="rom-drop-area" id="rom-drop-area">
                     <p>Drag & drop `.sv` ROM files here to add them.</p>
@@ -195,6 +195,44 @@
         });
 
         saveBtn.addEventListener('click', generateAndSaveUF2);
+
+        let draggedIndex = null;
+
+        romList.addEventListener('dragstart', e => {
+            if (e.target.classList.contains('rom-item')) {
+                draggedIndex = parseInt(e.target.dataset.index, 10);
+                e.dataTransfer.effectAllowed = 'move';
+                e.target.classList.add('dragging');
+            }
+        });
+
+        romList.addEventListener('dragend', e => {
+            if (e.target.classList.contains('rom-item')) {
+                e.target.classList.remove('dragging');
+            }
+        });
+
+        romList.addEventListener('dragover', e => {
+            e.preventDefault();
+        });
+
+        romList.addEventListener('drop', e => {
+            e.preventDefault();
+            if (draggedIndex === null) {
+                return;
+            }
+            const target = e.target.closest('.rom-item');
+            if (target) {
+                const fromIndex = draggedIndex;
+                const toIndex = parseInt(target.dataset.index, 10);
+                if (fromIndex !== toIndex) {
+                    const [movedRom] = roms.splice(fromIndex, 1);
+                    roms.splice(toIndex, 0, movedRom);
+                    renderRomList();
+                }
+            }
+            draggedIndex = null;
+        });
 
         function handleUF2File(file) {
             if (!file || !file.name.endsWith('.uf2')) {
@@ -283,11 +321,14 @@
 
         function renderRomList() {
             romList.innerHTML = '';
+            document.getElementById('roms-section-title').textContent = `Manage ROMs (${roms.length} total)`;
             roms.forEach((rom, index) => {
                 const li = document.createElement('li');
                 li.className = 'rom-item';
+                li.setAttribute('draggable', 'true');
+                li.dataset.index = index;
                 li.innerHTML = `
-                    <span class="rom-name">${rom.name}</span>
+                    <span class="rom-name">${index}: ${rom.name}</span>
                     <button class="delete-rom-btn" data-index="${index}">Delete</button>
                 `;
                 romList.appendChild(li);
