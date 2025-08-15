@@ -112,8 +112,10 @@ Contributions are welcome! Please open an issue or PR.
 
 ## Credits
 
-Hardware design: Sa Gin
++ Hardware design: Sa Gin
++ Software: xrip, [vrodin](https://github.com/vrodin)
++ Beta testing: Oleg
 
 ## License
 
-Add a license of your choice (e.g., MIT, GPL) to clarify usage and redistribution.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
