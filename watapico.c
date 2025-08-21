@@ -1,15 +1,12 @@
 #include <string.h>
-#include <stdint.h>
 
-#include <pico/time.h>
+#include <pico/runtime.h>
 
 #include <hardware/gpio.h>
 #include <hardware/clocks.h>
 #include <hardware/flash.h>
 #include <hardware/sync.h>
-#include <hardware/regs/addressmap.h>
 #include <hardware/structs/vreg_and_chip_reset.h>
-#include <hardware/structs/rosc.h>
 
 #include "./roms/roms.h"
 
@@ -26,8 +23,8 @@
 #define PWR_ON_PIN 25
 #define PWR_ON_MASK (1u << PWR_ON_PIN)
 
-uint8_t __aligned(4) rom[65536];
-uint16_t ROM_MASK = 0xFFFF;
+uint8_t __aligned(4096) rom[65536];
+uint32_t ROM_MASK = 0xFFFF;
 
 #define MENU_ROM 0
 
@@ -51,45 +48,43 @@ typedef struct {
     uint32_t magic;
     uint32_t rom_index;
     uint8_t reserved[SETTINGS_PAGE_SIZE - 8];
-} __attribute__((packed)) SettingsPage;
+} __attribute__((packed)) Settings;
 
-static inline const SettingsPage *get_settings_xip_ptr() {
-    return (const SettingsPage *) (uintptr_t) SETTINGS_XIP_ADDR;
+
+__always_inline static const Settings *get_settings_xip_ptr() {
+    return (const Settings *) SETTINGS_XIP_ADDR;
 }
 
-static uint32_t load_rom_index_from_flash() {
-    const SettingsPage *page = get_settings_xip_ptr();
+__always_inline static uint32_t load_rom_index_from_flash() {
+    const Settings *page = get_settings_xip_ptr();
     if (page->magic == SETTINGS_MAGIC && page->rom_index < ROM_COUNT) {
         return page->rom_index;
     }
-    return 0u; // default on first boot or uninitialized flash
+    return 0; // default on first boot or uninitialized flash
 }
 
-static void save_rom_index_to_flash(uint32_t rom_index) {
-    // Prepare a single 256-byte page payload
-    static uint8_t page_buffer[SETTINGS_PAGE_SIZE];
-    memset(page_buffer, 0xFF, sizeof(page_buffer));
-    ((uint32_t *) page_buffer)[0] = SETTINGS_MAGIC;
-    ((uint32_t *) page_buffer)[1] = rom_index;
+__always_inline static void save_rom_index_to_flash(const uint32_t rom_index) {
+    const Settings settings = {
+        .magic = SETTINGS_MAGIC,
+        .rom_index = rom_index
+    };
 
-    const uint32_t ints = save_and_disable_interrupts();
-    // Erase the whole 4 KiB sector, then program the first 256-byte page
+    const uint32_t interrupts = save_and_disable_interrupts();
     flash_range_erase(SETTINGS_FLASH_OFFSET, SETTINGS_SECTOR_SIZE);
-    flash_range_program(SETTINGS_FLASH_OFFSET, page_buffer, SETTINGS_PAGE_SIZE);
-    restore_interrupts(ints);
+    flash_range_program(SETTINGS_FLASH_OFFSET, (const uint8_t *)&settings, 8);
+    restore_interrupts(interrupts);
 }
 
 uint32_t current_rom;
 
-static inline __always_inline void handle_bus() {
+__always_inline static void handle_bus() {
     while (true) {
-        while (gpio_get_all() & READ_MASK);
+        while (gpio_get_all() & READ_MASK) {}
 
         const uint32_t address = gpio_get_all() & ROM_MASK;
-        const uint32_t data = rom[address] << 17 | PWR_ON_MASK;
 
         gpio_set_dir_out_masked(DATA_MASK);
-        gpio_put_all(data);
+        gpio_put_all(rom[address] << 17 | PWR_ON_MASK);
         gpio_set_dir_in_masked(DATA_MASK);
 
         if (MENU_ROM == current_rom && address >= 0x1000 && address <= 0x10FF) {
@@ -102,7 +97,7 @@ static inline __always_inline void handle_bus() {
     }
 }
 
-void main() {
+int __time_critical_func(main) () {
     // Set the system clock speed.
     hw_set_bits(&vreg_and_chip_reset_hw->vreg, VREG_AND_CHIP_RESET_VREG_VSEL_BITS);
     set_sys_clock_hz(400 * MHZ, true); // 100x of Watara Supervision clock speed
