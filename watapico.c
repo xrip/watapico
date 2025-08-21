@@ -119,7 +119,7 @@ void main() {
 
     if (MENU_ROM == current_rom) {
         rom[0x1100] = ROM_COUNT - 1;
-        memcpy(&rom[0x1101], (uint8_t *) &rom_entries, sizeof(RomEntry) * ROM_COUNT);
+        memcpy(&rom[0x1101], rom_entries, sizeof(RomEntry) * ROM_COUNT);
     }
 
     ROM_MASK = rom_entry->mask;
